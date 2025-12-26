@@ -485,9 +485,13 @@
   // Firebase (MODULAR)
   // ==========================================================
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import {
-    getFirestore, collection, query, where, getDocs, addDoc, serverTimestamp
-  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  doc,
+  runTransaction
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
@@ -638,6 +642,25 @@
 
     showStep("login");
   });
+async function obtenerFolioDevolucion() {
+  const ref = doc(db, "consecutivos", "devoluciones");
+
+  return await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    let ultimo = 0;
+
+    if (snap.exists()) {
+      ultimo = snap.data().ultimo || 0;
+    }
+
+    const nuevo = ultimo + 1;
+
+    tx.set(ref, { ultimo: nuevo }, { merge: true });
+
+    // 🔥 FOLIO A 5 DÍGITOS
+    return String(nuevo).padStart(5, "0");
+  });
+}
 
   // ==========================================================
   // Cargar productos (productos: codigoBarra + concepto)
@@ -960,8 +983,17 @@ async function precargarProductos(){
         firmaBase64
       };
 
-      const ref = await addDoc(collection(db, CONFIG.devolucionesCollection), payload);
-      const folio = ref.id;
+// ✅ OBTENER FOLIO NUMÉRICO
+const folio = await obtenerFolioDevolucion();
+
+// AGREGAR FOLIO AL PAYLOAD
+payload.folio = folio;
+payload.estado = "pendiente";
+payload.fecha = new Date().toISOString();
+
+// GUARDAR DEVOLUCIÓN
+await addDoc(collection(db, "devoluciones"), payload);
+
 
       const pdfBlob = await generarPDFBonito({ folio, payload });
       descargarBlob(pdfBlob, `devolucion_${folio}.pdf`);
