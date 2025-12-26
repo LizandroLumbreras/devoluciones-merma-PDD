@@ -642,39 +642,56 @@
   // ==========================================================
   // Cargar productos (productos: codigoBarra + concepto)
   // ==========================================================
-  async function precargarProductos(){
-    setMsg(msgBuscar, "info", "Cargando catálogo de productos...");
-    productosCache = [];
+async function precargarProductos(){
+  setMsg(msgBuscar, "info", "Cargando catálogo de productos activos...");
+  productosCache = [];
 
-    try{
-      const snap = await getDocs(collection(db, CONFIG.productosCollection));
+  try{
+    const q = query(
+      collection(db, CONFIG.productosCollection),
+      where("activo", "==", true) // 🔥 SOLO ACTIVOS
+    );
 
-      snap.forEach(docu=>{
-        const p = docu.data();
+    const snap = await getDocs(q);
 
-        const codigo = (p.codigoBarra || p.codigobarras || p.codigo || "").toString().trim();
-        const descripcion =
-          p.concepto ??
-          p.nombre ??
-          p.descripcion ??
-          p.descripcionProducto ??
-          "(sin descripción)";
+    snap.forEach(docu=>{
+      const p = docu.data();
 
-        if(!codigo && descripcion === "(sin descripción)") return;
+      const codigo = (p.codigoBarra || p.codigobarras || p.codigo || "")
+        .toString()
+        .trim();
 
-        productosCache.push({
-          id: docu.id,
-          codigo,
-          descripcion: (descripcion||"").toString()
-        });
+      const descripcion =
+        p.concepto ??
+        p.nombre ??
+        p.descripcion ??
+        p.descripcionProducto ??
+        "(sin descripción)";
+
+      // seguridad extra
+      if(!codigo || descripcion === "(sin descripción)") return;
+
+      productosCache.push({
+        id: docu.id,
+        codigo,
+        descripcion
       });
+    });
 
-      setMsg(msgBuscar, "ok", `Productos cargados: ${productosCache.length}.`);
-    }catch(err){
-      console.error(err);
-      setMsg(msgBuscar, "bad", "No se pudo cargar productos. Revisa permisos/colección.");
-    }
+    setMsg(
+      msgBuscar,
+      "ok",
+      `Productos activos cargados: ${productosCache.length}`
+    );
+  }catch(err){
+    console.error(err);
+    setMsg(
+      msgBuscar,
+      "bad",
+      "Error cargando productos activos."
+    );
   }
+}
 
   // ==========================================================
   // Buscar
