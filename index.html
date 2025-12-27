@@ -490,8 +490,13 @@ import {
   collection,
   addDoc,
   doc,
-  runTransaction
+  runTransaction,
+  query,
+  where,
+  getDocs,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
 
   const firebaseConfig = {
     apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
@@ -661,26 +666,6 @@ async function obtenerFolioDevolucion() {
 
     showStep("login");
   });
-async function obtenerFolioDevolucion() {
-  const ref = doc(db, "consecutivos", "devoluciones");
-
-  return await runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref);
-    let ultimo = 0;
-
-    if (snap.exists()) {
-      ultimo = snap.data().ultimo || 0;
-    }
-
-    const nuevo = ultimo + 1;
-
-    tx.set(ref, { ultimo: nuevo }, { merge: true });
-
-    // 🔥 FOLIO A 5 DÍGITOS
-    return String(nuevo).padStart(5, "0");
-  });
-}
-
   // ==========================================================
   // Cargar productos (productos: codigoBarra + concepto)
   // ==========================================================
@@ -841,11 +826,6 @@ async function precargarProductos(){
     const totalCant = devolucionItems.reduce((acc,p)=>acc + safeInt(p.cantidad),0);
     $("totalesInfo").textContent = `${totalItems} productos • ${totalCant} piezas`;
   }
-
-  // Navegación
-  $("btnIrTabla").addEventListener("click", ()=>showStep("tabla"));
-  $("btnVolverBuscar").addEventListener("click", ()=>showStep("buscar"));
-
   // ==========================================================
   // Resumen
   // ==========================================================
@@ -1008,8 +988,6 @@ const folio = await obtenerFolioDevolucion();
 
 // AGREGAR FOLIO AL PAYLOAD
 payload.folio = folio;
-payload.estado = "pendiente";
-payload.fecha = new Date().toISOString();
 
 // GUARDAR DEVOLUCIÓN
 await addDoc(collection(db, "devoluciones"), payload);
