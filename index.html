@@ -557,6 +557,25 @@ import {
     const n = Number(x);
     return Number.isFinite(n) ? Math.floor(n) : 0;
   }
+async function obtenerFolioDevolucion() {
+  const ref = doc(db, "consecutivos", "devoluciones");
+
+  return await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    let ultimo = 0;
+
+    if (snap.exists()) {
+      ultimo = snap.data().ultimo || 0;
+    }
+
+    const nuevo = ultimo + 1;
+
+    tx.set(ref, { ultimo: nuevo }, { merge: true });
+
+    // 🔥 FOLIO A 5 DÍGITOS
+    return String(nuevo).padStart(5, "0");
+  });
+}
 
   // ==========================================================
   // UI refs
@@ -961,27 +980,28 @@ async function precargarProductos(){
     try{
       const firmaBase64 = canvas.toDataURL("image/png");
 
-      const payload = {
-        estado: "finalizada",
-        usuarioRutaDocId: usuarioDocId,
-        usuario: usuarioActual.usuario || "",
-        nombre: usuarioActual.nombre || "",
-        rol: usuarioActual.rol || "",
-        rutaId: usuarioActual.rutaId || "",
+const payload = {
+  estado: "pendiente", // 👈 estado inicial correcto
+  usuarioRutaDocId: usuarioDocId,
+  usuario: usuarioActual.usuario || "",
+  nombre: usuarioActual.nombre || "",
+  rol: usuarioActual.rol || "",
+  rutaId: usuarioActual.rutaId || "",
 
-        fechaISO: new Date().toISOString(),
-        fecha: serverTimestamp(),
-        notas: ($("outNotas").value || "").trim(),
+  fechaISO: new Date().toISOString(),
+  fecha: serverTimestamp(),
+  notas: ($("outNotas").value || "").trim(),
 
-        productos: devolucionItems.map(p=>({
-          codigo: p.codigo,
-          descripcion: p.descripcion,
-          cantidad: safeInt(p.cantidad),
-          motivo: p.motivo
-        })),
+  productos: devolucionItems.map(p=>({
+    codigo: p.codigo,
+    descripcion: p.descripcion,
+    cantidad: safeInt(p.cantidad),
+    motivo: p.motivo
+  })),
 
-        firmaBase64
-      };
+  firmaBase64
+};
+
 
 // ✅ OBTENER FOLIO NUMÉRICO
 const folio = await obtenerFolioDevolucion();
